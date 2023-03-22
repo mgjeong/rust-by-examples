@@ -73,7 +73,7 @@ fn main() {
 */
 
 /* Session 04 - Debug */
-
+/*
 use std::fmt;
 
 // struct UnPrintable(i32);
@@ -90,7 +90,7 @@ impl fmt::Display for DebugPrintable {
         return r;
 
         // or simpley
-        // write!(f, "{}", self.0);
+        // write!(f, "{}", self.0)
     }
 }
 
@@ -162,4 +162,134 @@ fn main() {
     };
     println!("Display: {}", complex);
     println!("Debug:   {:?}", complex);
+}
+*/
+
+/* Session 05 - List */
+/*
+use std::fmt;
+
+struct List(Vec<i32>);
+
+impl fmt::Display for List {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let List(ref vec) = *self;
+
+        (write!(f, "[ "))?;
+
+        // for (count, v) in vec.iter().enumerate() {
+        //     if count != 0 {
+        //         write!(f, ", ")?;
+        //     }
+        //     write!(f, "{}", v)?;
+        // }
+
+        // for( _, v ) in vec.iter().enumerate() {
+        //     write!(f, "{}, ", v)?;
+        // }
+
+        for (c, v) in vec.iter().enumerate() {
+            write!(f, "{}: {}, ", c, v)?;
+        }
+
+        write!(f, "]")
+    }
+}
+
+fn main() {
+    let list = List(vec![1, 2, 3]);
+    println!("{}", list);
+}
+*/
+
+/* Session 06 - formatting */
+
+use std::fmt::{self, Display, Formatter};
+
+struct City {
+    name: &'static str,
+    latitude: f32,
+    longitude: f32,
+}
+
+impl Display for City {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let lat = if self.latitude >= 0.0 { 'N' } else { 'S' };
+        let lon = if self.longitude >= 0.0 { 'E' } else { 'W' };
+
+        write!(
+            f,
+            "{}: {:.3}{} {:.3}{}",
+            self.name,
+            self.latitude.abs(),
+            lat,
+            self.longitude.abs(),
+            lon
+        )
+    }
+}
+
+#[derive(Debug)]
+struct Color {
+    red: u8,
+    green: u8,
+    blue: u8,
+}
+
+impl fmt::Display for Color {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "RGB( {r}, {g}, {b} 0x{r:02x}{g:02x}{b:02x}",
+            r = self.red,
+            g = self.green,
+            b = self.blue
+        )
+    }
+}
+
+fn main() {
+    for city in [
+        City {
+            name: "Dublin",
+            latitude: 53.347778,
+            longitude: -6.259722,
+        },
+        City {
+            name: "Oslo",
+            latitude: 59.95,
+            longitude: 10.75,
+        },
+        City {
+            name: "Vancouver",
+            latitude: 49.25,
+            longitude: -123.1,
+        },
+    ]
+    .iter()
+    {
+        println!("{}", city);
+    }
+
+    for color in [
+        Color {
+            red: 128,
+            green: 255,
+            blue: 90,
+        },
+        Color {
+            red: 0,
+            green: 3,
+            blue: 254,
+        },
+        Color {
+            red: 0,
+            green: 0,
+            blue: 0,
+        },
+    ]
+    .iter()
+    {
+        println!("{}", color);
+    }
 }
