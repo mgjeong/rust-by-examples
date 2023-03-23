@@ -149,9 +149,9 @@ fn session04() {
 
     println!("borrow the whole array as a slice");
     analyze_slice(&xs);
-    
+
     println!("borrow a section of the array");
-    analyze_slice(&ys[1..4]); 
+    analyze_slice(&ys[1..4]);
     println!("\n");
 }
 
