@@ -49,10 +49,27 @@ fn section03() {
     println!("outer long: {}", long_lived_binding);
 }
 
-// ToDo: practice section03,, declare first
+/* section04 - declare first */
+
+fn section04() {
+    let a_binding;
+    {
+        let x = 2;
+        a_binding = x * x;
+    }
+
+    println!("a binding: {}", a_binding);
+
+    let another;
+    // println!("another {}", another);
+
+    another = 1;
+    println!("another {}", another);
+}
 
 fn main() {
     section01();
     section02();
     section03();
+    section04();
 }
