@@ -392,6 +392,147 @@ fn section14() {
     }
 }
 
+/* section 15 - if let */
+
+#[derive(PartialEq)]
+enum Foo {
+    Bar,
+    Baz,
+    Qux(u32),
+}
+
+fn section15() {
+    println!("-- section 15 ------------------");
+
+    let number = Some(15);
+    let letter: Option<i32> = None;
+    let emoticon: Option<i32> = None;
+
+    if let Some(i) = number {
+        println!("Matched {:?}", i);
+    }
+
+    if let Some(i) = letter {
+        println!("Matched {:?}", i);
+    } else {
+        println!("Didn't match a number");
+    }
+
+    let i_like_letter = false;
+
+    if let Some(i) = emoticon {
+        println!("Matched {:?}", i);
+    } else if i_like_letter {
+        println!("Didn't match a number");
+    } else {
+        println!("I don't like letter");
+    }
+
+    let a = Foo::Bar;
+    let b = Foo::Baz;
+    let c = Foo::Qux(10);
+
+    if let Foo::Bar = a {
+        println!("a is foobar");
+    }
+
+    if let Foo::Bar = b {
+        println!("b is foobar");
+    }
+
+    if let Foo::Qux(value) = c {
+        println!("c is {}", value);
+    }
+
+    let c = Foo::Qux(100);
+    if let Foo::Qux(value @ 100) = c {
+        println!("c is one hundred");
+    }
+
+    if Foo::Bar == a {
+        println!("a is foobar");
+    }
+}
+
+/* section 16 - let else */
+
+use std::str::FromStr;
+
+fn get_count_item(s: &str) -> (u64, &str) {
+    let mut it = s.split(' ');
+
+    // let ( Some(count_str), Some(item) ) = ( it.next(), it.next()) else {
+    //     panic!("Can't segment count item pair: '{s}'");
+    // };
+    // let Ok(count) = u64::from_str(count_str) else {
+    //     panic!("Can't parse integer: '{count_str}'");
+    // };
+    // (count, item)
+
+    // or
+
+    let (count_str, item) = match (it.next(), it.next()) {
+        (Some(c), Some(i)) => (c, i),
+        _ => panic!("Can't segment count item pair: '{s}'"),
+    };
+    let count = if let Ok(c) = u64::from_str(count_str) {
+        c
+    } else {
+        panic!("Can't parse integer: '{count_str}'");
+    };
+    (count, item)
+}
+
+fn section16() {
+    println!("-- section 16 ------------------");
+
+    assert_eq!(get_count_item("3 chairs"), (3, "chairs"));
+    // let (c, i) = get_count_item("5iosdaf"); // panic!
+    // let (c, i) = get_count_item("asdf adf"); // panic!
+    let (c, i) = get_count_item("5 asdf");
+    println!("count = {}, item = {}", c, i);
+}
+
+/* section 17 - while let */
+
+fn section17() {
+    println!("-- section 17 ------------------");
+
+    // awkward...
+    // let mut optional: Option<i32> = Some(0);
+
+    // loop {
+    //     match optional {
+    //         Some(i) => {
+    //             if i > 9 {
+    //                 println!("Greater than 9, quit!");
+    //                 optional = None;
+    //             } else {
+    //                 println!("`i` is `{:?}`, try again.", i);
+    //                 optional = Some(i + 1);
+    //             }
+    //         }
+    //         _ => {
+    //             break;
+    //         }
+    //     }
+    // }
+
+    // or
+
+    let mut optional: Option<i32> = Some(0);
+
+    while let Some(i) = optional {
+        if i > 9 {
+            println!("Greater than 9, quit!");
+            optional = None;
+        } else {
+            println!("`i` is `{:?}`, try again.", i);
+            optional = Some(i + 1);
+        }
+    }
+}
+
 fn main() {
     section01();
     section02();
@@ -407,4 +548,7 @@ fn main() {
     section12();
     section13();
     section14();
+    section15();
+    section16();
+    section17();
 }
