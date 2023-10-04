@@ -1,0 +1,3 @@
+[workspace]
+members = ["helloworld"]
+default-members = ["helloworld"]
