@@ -1,3 +1,4 @@
 [workspace]
-members = ["helloworld"]
-default-members = ["helloworld"]
+members = ["helloworld", "primitives"]
+default-members = ["helloworld", "primitives"]
+resolver = "2"
