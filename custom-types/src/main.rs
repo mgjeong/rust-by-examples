@@ -247,7 +247,7 @@ fn main() {
 // --------------------------------------------------------------------
 // section 04: linked list
 
-/* */
+/*
 use crate::List::*;
 
 enum List {
@@ -301,4 +301,23 @@ fn main() {
 
     println!("linked list has length: {}", list.len());
     println!("{}", list.stringify());
+}
+*/
+
+// -------------------------------------------------------------------
+// section 05: constants
+
+static LANGUAGE: &str = "Rust";
+const THRESHOLD: i32 = 10;
+
+fn is_big(n: i32) -> bool {
+    n > THRESHOLD
+}
+
+fn main() {
+    let n = 16;
+
+    println!("this is {}.", LANGUAGE);
+    println!("the threshold is {}.", THRESHOLD);
+    println!("{} is {}.", n, if is_big(n) { "big" } else { "small}" });
 }
