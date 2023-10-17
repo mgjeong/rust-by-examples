@@ -5,6 +5,7 @@ members = [
     "custom-types",
     "variable-bindings",
     "types",
+    "conversion",
 ]
 default-members = [
     "helloworld",
@@ -12,5 +13,6 @@ default-members = [
     "custom-types",
     "variable-bindings",
     "types",
+    "conversion",
 ]
 resolver = "2"
