@@ -1,9 +1,16 @@
 [workspace]
-members = ["helloworld", "primitives", "custom-types", "variable-bindings"]
+members = [
+    "helloworld",
+    "primitives",
+    "custom-types",
+    "variable-bindings",
+    "types",
+]
 default-members = [
     "helloworld",
     "primitives",
     "custom-types",
     "variable-bindings",
+    "types",
 ]
 resolver = "2"
