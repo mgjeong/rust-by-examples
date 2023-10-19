@@ -7,6 +7,7 @@ members = [
     "types",
     "conversion",
     "expressions",
+    "flow-of-control",
 ]
 default-members = [
     "helloworld",
@@ -16,5 +17,6 @@ default-members = [
     "types",
     "conversion",
     "expressions",
+    "flow-of-control",
 ]
 resolver = "2"
