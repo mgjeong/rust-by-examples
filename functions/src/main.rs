@@ -279,7 +279,6 @@ fn main() {
 // section 05. closure - as input parameters
 
 /*
- */
 // Fn: the closure uses the captured value by reference (&T)
 // FnMut: the closure uses the captured value by mutable reference (&mut T)
 // FnOnce: the closure uses the captured value by value (T)
@@ -332,3 +331,330 @@ fn main() {
     let double = |x| 2 * x;
     println!("3 doubled: {}", apply_to_3(double));
 }
+*/
+
+// ----------------------------------------------------------------------
+// section 06. closure - type anonymity
+
+/*
+
+// Closures succinctly capture variables from enclosing scopes. Does this have any consequences?
+// It surely does. Observe how using a closure as a function parameter requires generics,
+// which is necessary because of how they are defined:
+// // `F` must be generic.
+// fn apply<F>(f: F) where
+//     F: FnOnce() {
+//    f();
+// }
+
+// When a closure is defined, the compiler implicitly creates a new anonymous structure
+// to store the captured variables inside, meanwhile implementing the functionality
+// via one of the traits: Fn, FnMut, or FnOnce for this unknown type.
+// This type is assigned to the variable which is stored until calling.
+
+// Since this new type is of unknown type, any usage in a function will require generics.
+// However, an unbounded type parameter <T> would still be ambiguous and not be allowed.
+// Thus, bounding by one of the traits: Fn, FnMut, or FnOnce (which it implements) is sufficient
+// to specify its type.
+
+// `F` must implement `Fn` for a closure which takes no
+// inputs and returns nothing - exactly what is required
+// for `print`.
+fn apply<F>(f: F)
+where
+    F: Fn(),
+{
+    f();
+}
+
+fn main() {
+    // let x = 7;
+    let x = "type anonymity";
+
+    let print = || println!("{}", x);
+
+    apply(print);
+}
+*/
+
+// ----------------------------------------------------------------------
+// section 07. closure - input function
+
+/*
+
+// Since closures may be used as arguments, you might wonder if the same can be said about functions.
+// And indeed they can! If you declare a function that takes a closure as parameter,
+// then any function that satisfies the trait bound of that closure can be passed as a parameter.
+
+// Define a function which takes a generic `F` argumetn bounded by `Fn`, and calls it
+fn call_me<F: Fn()>(f: F) {
+    f();
+}
+
+// Define a wrapper function satisfying the `Fn` bound
+fn function() {
+    println!("I'm a function!");
+}
+
+fn main() {
+    // Define a closure satisfying the `Fn` bound
+    let closure = || println!("I'm a clusure!");
+
+    call_me(function);
+    call_me(closure);
+}
+*/
+
+// ----------------------------------------------------------------------
+// section 08. closure - as output parameters
+
+/*
+
+// Closures as input parameters are possible, so returning closures as output parameters should also be possible.
+// However, anonymous closure types are, by definition, unknown, so we have to use `impl Trait` to return them.
+
+// The valid traits for returning a closure are:
+// - Fn
+// - FnMut
+// - FnOnce
+
+// Beyond this, the move keyword must be used, which signals that all captures occur by value.
+// This is required because any captures by reference would be dropped as soon as the function exited,
+// leaving invalid references in the closure.
+
+fn create_fn() -> impl Fn() {
+    let text = "Fn".to_owned();
+
+    move || println!("This is a: {}", text)
+}
+
+fn create_fnmut() -> impl FnMut() {
+    let text = "FnMut".to_owned();
+
+    move || println!("This is a: {}", text)
+}
+
+fn create_fnmut2() -> impl FnMut() {
+    let text = "FnMut2".to_owned();
+
+    move || println!("This is a: {}", text)
+}
+
+fn create_fnonce() -> impl FnOnce() {
+    let text = "FnOnce".to_owned();
+
+    move || println!("This is a: {}", text)
+    // || println!("This is a: {}", text) // ERROR.
+}
+
+fn main() {
+    let fn_plain = create_fn();
+    let mut fn_mut = create_fnmut();
+    let fn_once = create_fnonce();
+
+    fn_plain();
+    fn_mut();
+    fn_once();
+
+    fn_plain();
+    fn_mut();
+    // fn_once(); // error
+
+    // fn_mut = create_fnmut2(); // ERRROR.. WHY???????
+}
+*/
+
+// ----------------------------------------------------------------------
+// section 09. closure - examples in std
+
+/* part 1 - Iterator::any
+
+// pub trait Iterator {
+//     type Item;
+
+//     // `any` takes `&mut self` meaning the caller may be borrowed and modified, but not consumed.
+//     fn any<F>(&mut self, f: F) -> bool
+//     where
+//         F: FnMut(Self::Item) -> bool;
+// }
+
+fn main() {
+    let vec1 = vec![1, 2, 3];
+    let vec2 = vec![4, 5, 6];
+
+    // `iter()` for vecs yields `&i32`. Destructure to `i32`.
+    println!("2 in vec1: {}", vec1.iter().any(|&x| x == 2));
+    // `into_iter()` for vecs yields `i32`. No destructuring required.
+    println!("2 in vec2: {}", vec2.into_iter().any(|x| x == 2)); // `vec2` moved due to the `into_iter`
+
+    println!("{:?}", vec1);
+    // println!("{:?}", vec2); // ERROR
+
+    let array1 = [1, 2, 3];
+    let array2 = [4, 5, 6];
+
+    // `iter()` for arrays yields `&i32`.
+    println!("2 in array1: {}", array1.iter().any(|&x| x == 2));
+    // `into_iter()` for arrays yields `i32`.
+    println!("2 in array2: {}", array2.into_iter().any(|x| x == 2));
+
+    println!("{:?}", array1);
+    println!("{:?}", array2); // NOT error... WHY ????
+
+    // vec uses heap, array uses stack....
+    // TODO: check ownership condition.
+}
+*/
+
+/*
+// part 2 - Searching through iterators
+
+// pub trait Iterator {
+//     // The type being iterated over.
+//     type Item;
+
+//     // `find` takes `&mut self` meaning the caller may be borrowed
+//     // and modified, but not consumed.
+//     fn find<P>(&mut self, predicate: P) -> Option<Self::Item> where
+//         // `FnMut` meaning any captured variable may at most be
+//         // modified, not consumed. `&Self::Item` states it takes
+//         // arguments to the closure by reference.
+//         P: FnMut(&Self::Item) -> bool;
+// }
+
+fn main() {
+    let vec1 = vec![1, 2, 3];
+    let vec2 = vec![4, 5, 6];
+
+    // `iter()` for vecs yields `&i32`
+    let mut iter = vec1.iter();
+    // `into_iter()` for vecs yields `i32`
+    let mut into_iter = vec2.into_iter();
+
+    // `iter()` for vecs yields `&i32`, and we want to reference one of its items,
+    // so we have to destructure `&&i32` to `i32`
+    println!("find 2 in vec1: {:?}", iter.find(|&&x| x == 2));
+    // `into_iter()` for vecs yields `i32`, and we want to referece on of
+    // its items, so we have to destructure `&i32` to `i32`
+    println!("find 2 in vec2: {:?}", into_iter.find(|&x| x == 2));
+
+    println!("{:?}", vec1);
+    // println!("{:?}", vec2); // ERROR..
+
+    let array1 = [1, 2, 3];
+    let array2 = [4, 5, 6];
+
+    println!("find 2 in array1: {:?}", array1.iter().find(|&&x| x == 2));
+    println!(
+        "find 2 in array1: {:?}",
+        array2.into_iter().find(|&x| x == 2)
+    );
+
+    println!("{:?}", array1);
+    println!("{:?}", array2);
+
+    let vec = vec![1, 9, 3, 3, 13, 2];
+
+    let index_of_first_even_number = vec.iter().position(|&x| x % 2 == 0);
+    println!(
+        "index of first even number: {:?}",
+        index_of_first_even_number
+    );
+    println!(
+        "index of first even number: {}",
+        index_of_first_even_number.unwrap()
+    );
+
+    let index_of_first_negative_number = vec.into_iter().position(|x| x < 0);
+    println!(
+        "index of first negative number: {:?}",
+        index_of_first_negative_number
+    );
+    if let Some(pos) = index_of_first_negative_number {
+        println!("index of first negative number: {}", pos);
+    } else {
+        println!("No negative number in the array");
+    }
+}
+*/
+
+// ----------------------------------------------------------------------
+// section 10. higher order functions
+
+/*
+
+fn is_odd(n: u32) -> bool {
+    n % 2 == 1
+}
+
+fn main() {
+    println!("find the sum of all the squared odd numbers under 1000");
+    let upper = 1000;
+
+    // imperative approach....
+    let mut acc = 0;
+    for n in 1.. {
+        let n_squared = n * n;
+        if n_squared >= upper {
+            break;
+        } else if is_odd(n_squared) {
+            acc += n_squared;
+        }
+    }
+
+    println!("imperative style: {}", acc);
+
+    // functional approach
+    let sum_of_squared_odd_numbers: u32 = (0..)
+        .map(|n| n * n)
+        .take_while(|&n_squared| n_squared <= upper)
+        .filter(|&n| n % 2 == 1)
+        .sum();
+
+    println!("functional styleL: {}", sum_of_squared_odd_numbers);
+}
+*/
+
+// ----------------------------------------------------------------------
+// section 11. Diverging functions
+
+/*
+ */
+
+// Diverging functions never return. They are marked using `!``, which is an empty type.
+
+fn foo() -> ! {
+    panic!("this call never returns.");
+}
+
+fn some_fn() {
+    ()
+}
+
+fn main() {
+    // foo(); // any code following this expression in unreachable
+    let _a: () = some_fn();
+    println!("This function returns and you can see this line");
+
+    //f_never_type();
+    fn sum_odd_numbers(upto: u32) -> u32 {
+        let mut acc = 0;
+        for i in 0..upto {
+            let addition = match i % 2 == 1 {
+                true => i,
+                false => continue,
+            };
+            acc += addition;
+        }
+        acc
+    }
+
+    println!("sum of odd numbers up to 9: {}", sum_odd_numbers(9));
+}
+
+// #[feature(never_type)]
+
+// fn f_never_type() {
+//     let x: ! = panic!("This call never returns");
+//     println!("you will never see this line!");
+// }
