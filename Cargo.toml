@@ -10,6 +10,8 @@ members = [
     "flow-of-control",
     "functions",
     "modules",
+    "cargo/foo",
+    "cargo/bar",
 ]
 default-members = [
     "helloworld",
@@ -22,5 +24,7 @@ default-members = [
     "flow-of-control",
     "functions",
     "modules",
+    "cargo/foo",
+    "cargo/bar",
 ]
 resolver = "2"
