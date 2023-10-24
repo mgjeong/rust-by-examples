@@ -12,6 +12,7 @@ members = [
     "modules",
     "cargo/foo",
     "cargo/bar",
+    "attributes",
 ]
 default-members = [
     "helloworld",
@@ -26,5 +27,6 @@ default-members = [
     "modules",
     "cargo/foo",
     "cargo/bar",
+    "attributes",
 ]
 resolver = "2"
