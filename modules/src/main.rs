@@ -235,3 +235,7 @@ fn main() {
 // +-- split.rs
 //
 // $ rustc split.rs && ./split
+
+fn main() {
+    println!("this is to remove error.");
+}
