@@ -405,7 +405,6 @@ fn main() {
 // section 10. associate items: the problem
 
 /*
- */
 
 // A `trait` that is generic over its container type has type specification requirements - users of the `trait`
 // must specify all of its generic types.
@@ -418,4 +417,261 @@ fn main() {
 // In practice, we want a way to express that `A` and `B` are determined by the input `C`.
 // As you will see in the next section, associated types provide exactly that capability.
 
-fn main() {}
+struct Container(i32, i32);
+
+// a trait which checks if 2 itmes are stored inside of container.
+// also retrieves first or last value.
+trait Contains<A, B> {
+    fn contains(&self, _: &A, _: &B) -> bool; // explicityly requires `A` and `B`
+    fn first(&self) -> i32; // doesn't explicitly require `A` or `B`
+    fn last(&self) -> i32; // doesn't explicitly require `A` or `B`
+}
+
+impl Contains<i32, i32> for Container {
+    // true if the numbers stored are equal.
+    fn contains(&self, number_1: &i32, number_2: &i32) -> bool {
+        (&self.0 == number_1) && (&self.1 == number_2)
+    }
+
+    fn first(&self) -> i32 {
+        self.0
+    }
+
+    fn last(&self) -> i32 {
+        self.1
+    }
+}
+
+// `C` contains `A` and `B`. In light of that, having to express `A` and `B` again is nuisance.
+fn difference<A, B, C>(container: &C) -> i32
+where
+    C: Contains<A, B>,
+{
+    container.last() - container.first()
+}
+
+fn main() {
+    let n1 = 3;
+    let n2 = 10;
+
+    let container = Container(n1, n2);
+
+    println!(
+        "does container contain {} and {}: {}",
+        &n1,
+        &n2,
+        container.contains(&n1, &n2)
+    );
+
+    println!("first number: {}", container.first());
+    println!("last number: {}", container.last());
+
+    println!("the difference: {}", difference(&container));
+}
+*/
+
+// ------------------------------------------------------------------
+// section 11. associate items: associated types
+
+/*
+
+// The use of "Associated types" improves the overall readability of code by moving inner types locally
+// into a trait as output types. Syntax for the `trait`` definition is as follows:
+
+// ```
+// `A` and `B` are defined in the trait via the `type` keyword.
+// (Note: `type` in this context is different from `type` when used for aliases).
+// trait Contains {
+//     type A;
+//     type B;
+
+//     // Updated syntax to refer to these new types generically.
+//     fn contains(&self, _: &Self::A, _: &Self::B) -> bool;
+// }
+// ```
+
+// Note that functions that use the trait Contains are no longer required to express A or B at all:
+
+// ```
+// Without using associated types
+// fn difference<A, B, C>(container: &C) -> i32 where
+//    C: Contains<A, B> { ... }
+
+// Using associated types
+// fn difference<C: Contains>(container: &C) -> i32 { ... }
+// ```
+
+//Let's rewrite the example from the previous section using associated types:
+
+struct Container(i32, i32);
+
+// a trait which check if 2 items are stored inside of container.
+// also retrieves first or last value.
+trait Contains {
+    // define generic types here which methods will be albe to utilize
+    type A;
+    type B;
+
+    fn contains(&self, _: &Self::A, _: &Self::B) -> bool;
+    fn first(&self) -> i32;
+    fn last(&self) -> i32;
+}
+
+impl Contains for Container {
+    // Specify what types `A` and `B` are. If the `input` type
+    // is `Container(i32, i32)`, the `output` types are determined
+    // as `i32` and `i32`.
+    type A = i32;
+    type B = i32;
+
+    // `&Self::A` and `&Self::B` are also valid here
+    // fn contains(&self, number_1: &i32, number_2: &i32) -> bool {
+    fn contains(&self, number_1: &Self::A, number_2: &Self::B) -> bool {
+        (&self.0 == number_1) && (&self.1 == number_2)
+    }
+
+    fn first(&self) -> i32 {
+        self.0
+    }
+
+    fn last(&self) -> i32 {
+        self.1
+    }
+}
+
+fn difference<C: Contains>(container: &C) -> i32 {
+    container.last() - container.first()
+}
+
+fn main() {
+    let n1 = 3;
+    let n2 = 10;
+
+    let container = Container(n1, n2);
+
+    println!(
+        "does container contain {} and {}: {}",
+        &n1,
+        &n2,
+        container.contains(&n1, &n2)
+    );
+
+    println!("first number: {}", container.first());
+    println!("last number: {}", container.last());
+
+    println!("the difference: {}", difference(&container));
+}
+*/
+
+// ------------------------------------------------------------------
+// section 12. phantom type parameters
+
+/*
+// A phantom type parameter is one that doesn't show up at runtime,
+// but is checked statically (and only) at compile time.
+// Data types can use extra generic type parameters to act as markers
+// or to perform type checking at compile time. These extra parameters
+// hold no storage values, and have no runtime behavior.
+//
+// In the following example, we combine `std::marker::PhantomData` with
+// the phantom type parameter concept to create tuples containing different data types.
+
+use std::marker::PhantomData;
+
+// a phantom tuple struct which is generic over `A` with hidden parameter `B`.
+#[derive(PartialEq)] // allow equality test for this type
+struct PhantomTuple<A, B>(A, PhantomData<B>);
+
+// a phantom type sturct which is generic over `A` with hidden parameter `B`.
+#[derive(PartialEq)] // allow equality test fo this type
+struct PhantomStruct<A, B> {
+    first: A,
+    phantom: PhantomData<B>,
+}
+
+// note: storage is allocated for generic type `A`, but not for `B`
+// therefore, `B` cannot be used in computations.
+fn main() {
+    // here, `f32` and `f64` are the hidden parameters.
+    // PhantomTuple type specified as `<char, f32>`
+    let _tuple1: PhantomTuple<char, f32> = PhantomTuple('Q', PhantomData);
+
+    // PhantomTuple type specified as `<char, f64>`
+    let _tuple2: PhantomTuple<char, f64> = PhantomTuple('Q', PhantomData);
+
+    // type specified as `<char, f32>`
+    let _struct1: PhantomStruct<char, f32> = PhantomStruct {
+        first: 'Q',
+        phantom: PhantomData,
+    };
+
+    // type specified as `<char, f64>`
+    let _struct2: PhantomStruct<char, f64> = PhantomStruct {
+        first: 'Q',
+        phantom: PhantomData,
+    };
+
+    // println!("_tuple1 == _tuple2 yields: {}", _tuple1 == _tuple2); // ERROR...
+    // println!("_sturct1 == _struct2 yields: {}", _struct1 == _struct2); // ERROR...
+}
+*/
+
+// ------------------------------------------------------------------
+// section 13. phantom type parameters - testcase: unit clarification
+
+// A useful method of unit conversions can be examined by implementing Add with a phantom type parameter.
+// The Add trait is examined below:
+// ```
+// // This construction would impose: `Self + RHS = Output`
+// // where RHS defaults to Self if not specified in the implementation.
+// pub trait Add<RHS = Self> {
+//     type Output;
+
+//     fn add(self, rhs: RHS) -> Self::Output;
+// }
+
+// // `Output` must be `T<U>` so that `T<U> + T<U> = T<U>`.
+// impl<U> Add for T<U> {
+//     type Output = T<U>;
+//     ...
+// }
+// ```
+
+use std::marker::PhantomData;
+use std::ops::Add;
+
+// create void enumerations to define unit types
+#[derive(Debug, Clone, Copy)]
+enum Inch {}
+#[derive(Debug, Clone, Copy)]
+enum Mm {}
+
+// `Length` is a type with phantom type parameter `Unit` and is not generic over the length type( this is `f64` ).
+// `f64` already implements the `Clone` and `Copy` traits.
+#[derive(Debug, Clone, Copy)]
+struct Length<Unit>(f64, PhantomData<Unit>);
+
+// the `Add` trait defines that behavior of the `+` operator.
+impl<Unit> Add for Length<Unit> {
+    type Output = Length<Unit>;
+
+    // fn add(self, rhs: Output) -> Output { // ERROR... wwhy ??????
+    fn add(self, rhs: Length<Unit>) -> Length<Unit> {
+        // `+` calls the `Add` implementation for `f64`
+        Length(self.0 + rhs.0, PhantomData)
+    }
+}
+
+fn main() {
+    let one_foot: Length<Inch> = Length(12.0, PhantomData);
+    let one_meter: Length<Mm> = Length(1000.0, PhantomData);
+
+    // `+` calls the `add()` method we implemented for `Length<Unit>`
+    let two_feet = one_foot + one_foot;
+    let two_meters = one_meter + one_meter;
+
+    println!("one foot + one foot = {:?}", two_feet.0);
+    println!("one meter + one meter = {:?}", two_meters.0);
+
+    // let one_feter = one_foot + one_meter; // ERROR.. type mismatch..
+}
