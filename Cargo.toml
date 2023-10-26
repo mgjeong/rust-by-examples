@@ -14,6 +14,7 @@ members = [
     "cargo/bar",
     "attributes",
     "generics",
+    "scoping-rules",
 ]
 default-members = [
     "helloworld",
@@ -30,5 +31,6 @@ default-members = [
     "cargo/bar",
     "attributes",
     "generics",
+    "scoping-rules",
 ]
 resolver = "2"
