@@ -424,7 +424,6 @@ fn main() {
 }
 */
 
-
 // ------------------------------------------------------------------------
 // section 10. lifetimes - explicit annotation
 /*
@@ -582,13 +581,6 @@ struct Borrowed<'a>(&'a i32);
 struct NamedBorrowed<'a> {
     x: &'a i32,
     y: &'a i32,
-}
-
-impl NamedBorrowed {
-    fn mutation(&self) {
-        *self.x += 10;
-        *self.y += 10;
-    }
 }
 
 // An enum which is either an `i32` or a reference to one.
