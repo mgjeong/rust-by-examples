@@ -422,7 +422,7 @@ fn main() {
         println!("borrow2: {}", borrow2);
     }
 }
-*
+*/
 
 // ------------------------------------------------------------------------
 // section 10. lifetimes - explicit annotation
