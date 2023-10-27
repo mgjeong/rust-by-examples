@@ -584,13 +584,6 @@ struct NamedBorrowed<'a> {
     y: &'a i32,
 }
 
-impl NamedBorrowed {
-    fn mutation(&self) {
-        *self.x += 10;
-        *self.y += 10;
-    }
-}
-
 // An enum which is either an `i32` or a reference to one.
 #[derive(Debug)]
 enum Either<'a> {
