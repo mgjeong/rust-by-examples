@@ -390,7 +390,6 @@ fn main() {
 // ------------------------------------------------------------------------
 // section 09. lifetimes - overview
 /*
- */
 // A lifetime is a construct of the compiler (or more specifically, its borrow checker)
 // uses to ensure all borrows are valid. Specifically, a variable's lifetime begins
 // when it is created and ends when it is destroyed.
@@ -408,7 +407,8 @@ fn main() {
 // and destruction of each variable.
 // `i` has the longest lifetime because its scope entirely encloses
 // both `borrow1` and `borrow2`. The duration of `borrow1` compared
-// to `borrow2` is irrelevant since they are disjoint.o
+// to `borrow2` is irrelevant since they are disjoint.
+
 fn main() {
     let i = 3;
     {
@@ -421,18 +421,195 @@ fn main() {
         println!("borrow2: {}", borrow2);
     }
 }
+*/
 
 // ------------------------------------------------------------------------
 // section 10. lifetimes - explicit annotation
+/*
+// The borrow checker uses explicit lifetime annotations to determine how long references should be valid.
+// In cases where lifetimes are not elided1, Rust requires explicit annotations to determine
+// what the lifetime of a reference should be.
+// The syntax for explicitly annotating a lifetime uses an apostrophe character as follows:
+//
+// `foo<'a>``
+// // `foo` has a lifetime parameter `'a`
+//
+// Similar to closures, using lifetimes requires generics. Additionally, this lifetime syntax indicates that
+// the lifetime of `foo` may not exceed that of `'a`.
+// Explicit annotation of a type has the form `&'a T` where `'a` has already been introduced.
+//
+// In cases with multiple lifetimes, the syntax is similar:
+//
+// `foo<'a, 'b>`
+// // `foo` has lifetime parameters `'a` and `'b`
+//
+// In this case, the lifetime of foo cannot exceed that of either `'a` or `'b`.
+//
+// See the following example for explicit lifetime annotation in use:
+
+// `print_refs` takes two references to `i32` which have different
+// lifetimes `'a` and `'b`. These two lifetimes must both be at
+// least as long as the function `print_refs`.
+fn print_refs<'a, 'b>(x: &'a i32, y: &'b i32) {
+    println!("x is {} and y is {}", x, y);
+}
+
+// a function which takes no arguments, but has a lifetime parameter `'a`
+fn failed_borrow<'a>() {
+    let _x = 12;
+
+    // let y: &'a i32 = &_x; // ERROR... `_x` does not live long enough.
+    // Attempting to use the lifetime `'a` as an explicit type annotation
+    // inside the function will fail because the lifetime of `&_x` is shorter
+    // than that of `y`. A short lifetime cannot be coerced into a longer one.
+}
+
+fn main() {
+    // create variables to be borrowed below.
+    let (four, nine) = (4, 9);
+
+    // Borrows (`&`) of both variables are passed into the function.
+    print_refs(&four, &nine);
+    // Any input which is borrowed must outlive the borrower.
+    // In other words, the lifetime of `four` and `nine` must
+    // be longer than that of `print_refs`.
+
+    failed_borrow();
+    // `failed_borrow` contains no references to force `'a` to be
+    // longer than the lifetime of the function, but `'a` is longer.
+    // Because the lifetime is never constrained, it defaults to `'static`.
+}
+*/
 
 // ------------------------------------------------------------------------
 // section 11. lifetimes - functions
+/*
+
+// Ignoring elision, function signatures with lifetimes have a few constraints:
+// - any reference must have an annotated lifetime.
+// - any reference being returned must have the same lifetime as an input or be static.
+// Additionally, note that returning references without input is banned
+//  if it would result in returning references to invalid data.
+// The following example shows off some valid forms of functions with lifetimes:
+
+// One input reference with lifetime `'a` which must live
+// at least as long as the function.
+fn print_one<'a>(x: &'a i32) {
+    println!("`print_one`: x is {}", x);
+}
+
+// mutable references are possible with lifetime as well.
+fn add_one<'a>(x: &'a mut i32) {
+    *x += 1;
+}
+
+// Multiple elements with different lifetimes. In this case, it
+// would be fine for both to have the same lifetime `'a`, but
+// in more complex cases, different lifetimes may be required.
+fn print_multi<'a, 'b>(x: &'a i32, y: &'a i32) {
+    println!("`print_multi`: x is {}, y is {}", x, y);
+}
+
+// Returning references that have been passed in is acceptable.
+// However, the correct lifetime must be returned.
+fn pass_x<'a, 'b>(x: &'a i32, _: &'b i32) -> &'a i32 {
+    x
+}
+
+// fn invalid_output<'a>() -> &'a String {
+//     &String::from("foo")
+// }
+// The above is invalid: `'a` must live longer than the function.
+// Here, `&String::from("foo")` would create a `String`, followed by a
+// reference. Then the data is dropped upon exiting the scope, leaving
+// a reference to invalid data to be returned.
+
+fn main() {
+    let x = 7;
+    let y = 9;
+
+    print_one(&x);
+    print_multi(&x, &y);
+
+    let z = pass_x(&x, &y);
+    print_one(z);
+
+    let mut t = 3;
+    add_one(&mut t);
+    print_one(&t);
+}
+*/
 
 // ------------------------------------------------------------------------
 // section 12. lifetimes - methods
+/*
+
+// methods are annotated similarity to funcitons:
+struct Owner(i32);
+
+impl Owner {
+    // annotate lifetime as in a standalone function
+    fn add_one<'a>(&'a mut self) {
+        self.0 += 1;
+    }
+    fn print<'a>(&'a self) {
+        println!("`print`: {}", self.0);
+    }
+}
+
+fn main() {
+    let mut owner = Owner(18);
+
+    owner.add_one();
+    owner.print();
+}
+*/
 
 // ------------------------------------------------------------------------
 // section 13. lifetimes - structs
+/*
+ */
+
+// A type `Borrowed` which houses a reference to an
+// `i32`. The reference to `i32` must outlive `Borrowed`.
+#[derive(Debug)]
+struct Borrowed<'a>(&'a i32);
+
+// similarly, both references here must outlive this structure.
+#[derive(Debug)]
+struct NamedBorrowed<'a> {
+    x: &'a i32,
+    y: &'a i32,
+}
+
+impl NamedBorrowed {
+    fn mutation(&self) {
+        *self.x += 10;
+        *self.y += 10;
+    }
+}
+
+// An enum which is either an `i32` or a reference to one.
+#[derive(Debug)]
+enum Either<'a> {
+    Num(i32),
+    Ref(&'a i32),
+}
+
+fn main() {
+    let x = 18;
+    let y = 15;
+
+    let single = Borrowed(&x);
+    let double = NamedBorrowed { x: &x, y: &y };
+    let reference = Either::Ref(&x);
+    let number = Either::Num(y);
+
+    println!("x is borrowed in {:?}", single);
+    println!("x and y are borrowed in {:?}", double);
+    println!("x is borrowed in {:?}", reference);
+    println!("y is *not* borrowed in {:?}", number);
+}
 
 // ------------------------------------------------------------------------
 // section 14. lifetimes - traits
