@@ -424,7 +424,6 @@ fn main() {
 }
 */
 
-
 // ------------------------------------------------------------------------
 // section 10. lifetimes - explicit annotation
 /*
@@ -570,8 +569,6 @@ fn main() {
 // ------------------------------------------------------------------------
 // section 13. lifetimes - structs
 /*
- */
-
 // A type `Borrowed` which houses a reference to an
 // `i32`. The reference to `i32` must outlive `Borrowed`.
 #[derive(Debug)]
@@ -605,18 +602,222 @@ fn main() {
     println!("x is borrowed in {:?}", reference);
     println!("y is *not* borrowed in {:?}", number);
 }
+*/
 
 // ------------------------------------------------------------------------
 // section 14. lifetimes - traits
 
+/*
+// Annotation of lifetimes in trait methods basically are similar to functions. Note that impl may have annotation of lifetimes too.
+
+#[derive(Debug)]
+struct Borrowed<'a> {
+    x: &'a i32,
+}
+
+// annotate lifetimes to impl.
+impl<'a> Default for Borrowed<'a> {
+    fn default() -> Self {
+        Self { x: &10 }
+    }
+}
+
+fn main() {
+    let b: Borrowed = Default::default();
+    println!("{}", b.x);
+    println!("b is {:?}", b);
+}
+*/
+
 // ------------------------------------------------------------------------
 // section 15. lifetimes - bounds
 
+/*
+// Just like generic types can be bounded, lifetimes (themselves generic) use bounds as well.
+// The `:` character has a slightly different meaning here, but `+` is the same. Note how the following read:
+//
+// 1. `T`: 'a`: All references in `T` must outlive lifetime `'a`.
+// 2. `T: Trait + 'a`: Type `T` must implement trait `Trait` and all references in T must outlive `'a`.
+//
+// The example below shows the above syntax in action used after keyword `where:``
+
+use std::fmt::Debug;
+
+#[derive(Debug)]
+struct Ref<'a, T: 'a>(&'a T);
+// `Ref` contains a reference to a generic type `T` that has an unknown lifetime `'a`. `T` is bounded such that any
+// *references* in `T` must outlive `'a`. Additionally, the lifetime of `Ref` may not exceed `'a`.
+
+// a generic function which prints using the `Debug` triat.
+fn print<T>(t: T)
+where
+    T: Debug,
+{
+    println!("`print`: t is {:?}", t);
+}
+
+// Here a reference to `T` is taken where `T` implements `Debug` and all *references* in `T` outlive `'a`.
+// In addition, `'a` must outlive the function.
+fn print_ref<'a, T>(t: &'a T)
+where
+    T: Debug + 'a,
+{
+    println!("`print_ref`:t is {:?}", t);
+}
+
+fn main() {
+    let x = 7;
+    let ref_x = Ref(&x);
+
+    print_ref(&ref_x);
+    print(ref_x);
+}
+*/
+
 // ------------------------------------------------------------------------
 // section 16. lifetimes - coercion
+/*
+// A longer lifetime can be coerced into a shorter one so that it works inside a scope it normally wouldn't work in.
+// This comes in the form of inferred coercion by the Rust compiler, and also in the form of declaring a lifetime difference:
+
+// Here, Rust infers a lifetime that is as short as possible.
+// The two references are then coerced to that lifetime.
+fn multiply<'a>(first: &'a i32, second: &'a i32) -> i32 {
+    // fn multiply(first: &i32, second: &i32) -> i32 {
+    first * second
+}
+
+//`<'a: 'b, 'b>` reads as lifetime `'a` is at least as long as `'b`.
+// Here, we take in an `&'a i32` and return a `&'b i32` as a result of coercion.
+fn choose_first<'a: 'b, 'b>(first: &'a i32, _: &'b i32) -> &'b i32 {
+    // fn choose_first<'a>(first: &'a i32, _: &'a i32) -> &'a i32 {
+    first
+}
+
+fn main() {
+    let first = 2;
+    {
+        let second = 3;
+        println!("the product is {}", multiply(&first, &second));
+        println!("{} is the first", choose_first(&first, &second));
+    }
+}
+*/
 
 // ------------------------------------------------------------------------
 // section 17. lifetimes - static
 
+// Rust has a few reserved lifetime names. One of those is 'static.
+// You might encounter it in to situation.
+// ```
+// // A reference with 'static lifetime:
+// let s: &'static str = "hello world";
+//
+// // 'static as part of a trait bound:
+// fn generic<T>(x: T) where T: 'static {}
+// ```
+// Both are related but subtly different and this is a common source for confusion when learning Rust.
+// Here are some examples for each situation:
+
+/*
+// ** Reference lifetime **
+// As a reference lifetime `'static` indicates that the data pointed to by the reference lives
+// for the entire lifetime of the running program. It can still be coerced to a shorter lifetime.
+// There are two ways to make a variable with `'static` lifetime,
+// and both are stored in the read-only memory of the binary:
+// - Make a constant with the `static` declaration.
+// - Make a `string` literal which has type: `&'static str`.
+// See the following example for a display of each method:
+
+// make a constant with `'static`lifetime
+static NUM: i32 = 18;
+
+// return a reference to `NUM` where its `'static` lifetime is coered
+// to that of the input argument.
+fn coerce_static<'a>(_: &'a i32) -> &'a i32 {
+    &NUM
+}
+
+fn main() {
+    {
+        // make a `string` literal and print it
+        let static_stringr = "I'm read-only memory";
+        println!("staic_string: {}", static_string);
+        // When `static_string` goes out of scope, the reference
+        // can no longer be used, but the data remains in the binary.
+    }
+    {
+        // make an integer to use for `coerce_static`
+        let lifetime_num = 9;
+        let coerced_static = coerce_static(&lifetime_num);
+
+        println!("coerced_static: {}", coerced_static);
+    }
+
+    println!("NUM: {} stays assessible!", NUM);
+}
+*/
+
+/*
+// ** Trait bound **
+
+// As a trait bound, it means the type does not contain any non-static references.
+// Eg. the receiver can hold on to the type for as long as they want and it will never become invalid until they drop it.
+
+// It's important to understand this means that any owned data always passes a `'static` lifetime bound,
+// but a reference to that owned data generally does not:
+
+use std::fmt::Debug;
+
+fn print_it(input: impl Debug + 'static) {
+    println!("'static value passed in is: {:?}", input);
+}
+
+fn main() {
+    let i = 5;
+    print_it(i);
+
+    // oops, &i only has the lifetime defined by the scope of main(),
+    // so it's not 'static
+    // print_it(&i); // ERROR...
+
+    // let string = "I'm s string";
+    let string: &'static str = "I'm s string"; // same as above line.
+    print_it(string);
+}
+*/
+
 // ------------------------------------------------------------------------
 // section 18. lifetimes - elision
+
+// Some lifetime patterns are overwhelmingly common and so the borrow checker will allow you
+// to omit them to save typing and to improve readability. This is known as elision.
+// Elision exists in Rust solely because these patterns are common.
+// The following code shows a few examples of elision.
+// For a more comprehensive description of elision, see lifetime elision in the book.
+
+// `elided_input` and `annotated_input` essentially have identical signatures
+// because the lifetime of `elided_input` is inferred by the compiler
+fn elided_input(x: &i32) {
+    println!("`elided_input`: {}", x);
+}
+
+fn annotated_input<'a>(x: &'a i32) {
+    println!("`annotated_input`: {}", x);
+}
+
+fn elided_pass(x: &i32) -> &i32 {
+    x
+}
+
+fn annotated_pass<'a>(x: &'a i32) -> &'a i32 {
+    x
+}
+
+fn main() {
+    let x = 3;
+    elided_input(&x);
+    annotated_input(&x);
+    println!("`elided_pass`: {}", elided_pass(&x));
+    println!("`annotated_pass`: {}", annotated_pass(&x));
+}
