@@ -15,6 +15,7 @@ members = [
     "attributes",
     "generics",
     "scoping-rules",
+    "traits"
 ]
 default-members = [
     "helloworld",
@@ -32,5 +33,6 @@ default-members = [
     "attributes",
     "generics",
     "scoping-rules",
+    "traits"
 ]
 resolver = "2"
