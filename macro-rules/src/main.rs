@@ -1,42 +1,6 @@
 // -------------------------------------------------------------------
 // section 01. overview
 
-// greeting....
-// 수고가 많다... 고생하고 있다... 다 알고 있다...
-//
-// 지난 번에 변화에 대해서 잠깐 얘기했었는데, 어떤 변화를 생각하고 있는지?
-// 해외 branch 줄이면, 투자자가 안좋게 본다.
-//
-// 개발팀과 일부 pmo 인원들과 애기를 좀 나누었다.. 그 상황을 좀 공유하고 싶다.
-// 조금씩은 개인별로 그리고 시니어와 주니어별로 다르긴 하지만, 주로 공통적인 생각들이 있고,
-// 어떤이는 대표 앞에서 얘기할 수 있지만, 어떤이는 앞에서는 얘기하지 않는다..
-//
-// 1. 우선 현재 대표가 투자 유치활둉 하는 것은 다 응원하고 있다.
-// 2. 동시에, 조속히 실행되지 않을 경우 법적인 절차를 진행하는 것은 응원하는 마음과는 별도이다. 모두 그럴것이다.
-// 3. 많은 사람들이 지난 달 까지를 마지막으로 생각하고 있었다.
-//    이미 사기가 다 떨어졌다.. 급여 지급만이 해결책이다.
-// 4. 그럼에도 불구하고, 투자 유치하고 밀린 급여 이체되면 많은 사람들이 떠날 것이다.
-//    ( 물론 아닐수도 있지만, 그건 결과론이고, 지금은 사람들이 다 그렇게 생각하고/말하고 있다.)
-// 5. 어떻게 하면 계속 함께할 수 있는지를 물어보면, 한결같은 대답이 돌아온다.
-//    회사의 운영 방법이 변화해야 한다.
-//    이 부분에서, 스타트업은 대표의 의기가 중요하고, 대표가 방향을 잡으니까,
-//    지금까지는 맘에 들지 않더라도 다 따랐다, 그런데 이번 상황을 겪고 나서는,
-//    본인의 생각과 부합하지 않는다면, 이직할 것이라는 얘기들을 한다.
-//    - in detail,,,
-//        . biz-oriented 개발( product이 제일 우선이다.. ) // 이걸 pitching에 활용한다.
-//          실제 product에 반영한다고 했을 때 WoW 할 수 있는 것들을 구성원들이 이해해야 한다.
-//        . 비용 효율화는 왜 안하는지... ( office shutdown )
-// 6. 8월 이전으로 돌아가는 건 불가능하다, 모두 다 함께 갈 수 없다.
-// 7. 왜 이런 상황에 처하게 되었는지, 원인을 분석해서, 문제를 찾고, 그 문제를 해결하기 위해 어떻게 해야하는지는 방법을 찾아야 한다.
-// 8. 의사 결정 협의체(Jin, DJ, Soong, MJ,,) 구성해서,
-//    향후 회사의 운영 방안데 대해서 논의하고 이를 투자유치가 성공할 때 전체 공유해야 한다.
-//    - in detail,,,
-//        . 누구를 꼭 잡아야 하는지...
-//        . 비용 효율화는 어떻게 할지...
-//        . Product 전략은 어떻게 할지...( 지금 biz는 working 하지 않는다.. )
-//    그래야 지금까지 함께 해온 사람들( knowhow )이 계속 함께 갈 수 있다.
-// 9. 지금 어떻게 해야 한다를 얘기하는 건 아니니까,, 그렇게 할 수 있게, rebuilding을 할 수 있게, direction 주어야 한다.
-
 /*
 macro_rules! say_hello {
     // `()` indicates that the macro takes no argument.
@@ -136,8 +100,6 @@ fn main() {
 // section 04. syntax: repeatition
 
 /*
- */
-
 macro_rules! find_min {
     ($x:expr) => ($x);
     ($x:expr, $($y:expr), +) => (
@@ -149,4 +111,130 @@ fn main() {
     println!("{}", find_min!(1));
     println!("{}", find_min!(1 + 2, 2));
     println!("{}", find_min!(5, 2 * 3, 4));
+}
+*/
+
+// -------------------------------------------------------------------
+// section 05. DRY( don't repeat yourself )
+
+/*
+// Macros allow writing DRY code by factoring out the common parts of functions and/or test suites.
+// Here is an example that implements and tests the `+=`, `*=` and `-=` operators on Vec<T>:
+
+use std::ops::{Add, Mul, Sub};
+
+macro_rules! assert_equal_len {
+    // the `tt` (toket tree) disignator is used for operators and tokens
+    ($a:expr, $b:expr, $func:ident, $op:tt) => {
+        assert!(
+            $a.len() == $b.len(),
+            "{:?}: dimension mismatch: {:?} {:?} {:?}",
+            stringify!($func),
+            ($a.len(),),
+            stringify!($op),
+            ($b.len(),)
+        );
+    };
+}
+
+macro_rules! op {
+    ($func:ident, $bound:ident, $op:tt, $method:ident) => {
+        fn $func<T: $bound<T, Output = T> + Copy>(xs: &mut Vec<T>, ys: &Vec<T>) {
+            assert_equal_len!(xs, ys, $func, $op);
+            for (x, y) in xs.iter_mut().zip(ys.iter()) {
+                *x = $bound::$method(*x, *y);
+                // *x = x.$method(*y)
+            }
+        }
+    };
+}
+
+// implement `add_assign`, `mul_assign`, and `sub_assign` functions.
+op!(add_assign, Add, +=, add);
+op!(mul_assign, Mul, *=, mul);
+op!(sub_assign, Sub, -=, sub);
+
+mod test {
+    use std::iter;
+    macro_rules! test {
+        ($func:ident, $x:expr, $y:expr, $z:expr) => {
+            #[test]
+            fn $func() {
+                for size in 0usize..10 {
+                    let mut x: Vec<_> = iter::repeat($x).take(size).collect();
+                    let y: Vec<_> = iter::repeat($y).take(size).collect();
+                    let z: Vec<_> = iter::repeat($z).take(size).collect();
+                    super::$func(&mut x, &y);
+
+                    assert_eq!(x, z);
+                }
+            }
+        };
+    }
+
+    test!(add_assign, 1u32, 2u32, 3u32);
+    test!(mul_assign, 2u32, 3u32, 6u32);
+    test!(sub_assign, 3u32, 2u32, 1u32);
+}
+*/
+
+// -------------------------------------------------------------------
+// section 06. DSLs( domain specific languages )
+
+/*
+// A DSL is a mini "language" embedded in a Rust macro.
+// It is completely valid Rust because the macro system expands into normal Rust constructs,
+// but it looks like a small language. This allows you to define concise or intuitive syntax
+// for some special functionality (within bounds).
+//
+// Suppose that I want to define a little calculator API.
+// I would like to supply an expression and have the output printed to console.
+
+macro_rules! calculate {
+    (eval $e:expr) => {
+        {
+            let val: usize = $e; // force types to be integer
+            println!("{} = {}", stringify!{$e}, val);
+        }
+    };
+}
+fn main() {
+    calculate! {
+        eval 1 + 2 // eval is _not_ a Rust keyword!
+    }
+    calculate! {
+        eval (1+2)*(3/4)
+    }
+}
+*/
+
+// -------------------------------------------------------------------
+// section 07. variadic interface
+
+/*
+ */
+// A variadic interface takes an arbitrary number of arguments.
+// For example, `println!` can take an arbitrary number of arguments, as determined by the format string.
+//
+// We can extend our `calculate!` macro from the previous section to be variadic:
+
+macro_rules! calculate {
+    ( eval $e: expr ) => {
+        {
+            let val: usize = $e; // force types to be integer
+            println!("{} = {}", stringify!($e), val);
+        }
+    };
+    ( eval $e: expr, $(eval $es: expr), + ) => {{
+        calculate! { eval $e }
+        calculate! { $( eval $es ), + }
+    }};
+}
+
+fn main() {
+    calculate! {
+        eval 1 + 2,
+        eval 3 + 4,
+        eval ( 2 * 3 ) + 1
+    }
 }
