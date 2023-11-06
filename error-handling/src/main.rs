@@ -446,10 +446,243 @@ fn main() {
 */
 
 // --------------------------------------------------------------------
-// section 08 - Result
+// section 08 - Result : map for Result
+/*
+use std::num::ParseIntError;
+
+fn multiply(first_num_str: &str, second_num_str: &str) -> Result<i32, ParseIntError> {
+    match first_num_str.parse::<i32>() {
+        Ok(first_num) => match second_num_str.parse::<i32>() {
+            Ok(second_num) => Ok(first_num * second_num),
+            Err(e) => Err(e),
+        },
+        Err(e) => Err(e),
+    }
+}
+
+fn print(result: Result<i32, ParseIntError>) {
+    match result {
+        Ok(n) => println!("n is {}", n),
+        Err(e) => println!("Error: {}", e),
+    }
+}
+
+fn main() -> Result<(), ParseIntError> {
+    let twenty = multiply("10", "2");
+    print(twenty);
+
+    let tt = multiply("t", "2");
+    print(tt);
+
+    Ok(())
+}
+*/
+/*
+use std::num::ParseIntError;
+
+fn multiply(first_num_str: &str, second_num_str: &str) -> Result<i32, ParseIntError> {
+    first_num_str.parse::<i32>().and_then(|first_num| {
+        second_num_str
+            .parse::<i32>()
+            .map(|second_num| first_num * second_num)
+    })
+}
+
+fn print(result: Result<i32, ParseIntError>) {
+    match result {
+        Ok(n) => println!("n is {}", n),
+        Err(e) => println!("Error: {}", e),
+    }
+}
+
+fn main() -> Result<(), ParseIntError> {
+    let twenty = multiply("10", "2");
+    print(twenty);
+
+    let tt = multiply("t", "2");
+    print(tt);
+
+    Ok(())
+}
+*/
 
 // --------------------------------------------------------------------
-// section 09 - Multiple error types
+// section 09 - Result : aliases for Result
+/*
+use std::num::ParseIntError;
+
+// define alias
+type AliasedResult<T> = Result<T, ParseIntError>;
+
+fn multiply(first_num_str: &str, second_num_str: &str) -> AliasedResult<i32> {
+    first_num_str.parse::<i32>().and_then(|first_num| {
+        second_num_str
+            .parse::<i32>()
+            .map(|second_num| first_num * second_num)
+    })
+}
+
+fn print(result: Result<i32, ParseIntError>) {
+    match result {
+        Ok(n) => println!("n is {}", n),
+        Err(e) => println!("Error: {}", e),
+    }
+}
+
+fn main() {
+    let twenty = multiply("10", "2");
+    print(twenty);
+
+    let tt = multiply("t", "2");
+    print(tt);
+}
+*/
+
+// --------------------------------------------------------------------
+// section 10 - early returns
+/*
+use std::num::ParseIntError;
+
+fn multiply(first_num_str: &str, second_num_str: &str) -> Result<i32, ParseIntError> {
+    let first_num = match first_num_str.parse::<i32>() {
+        Ok(num) => num,
+        Err(e) => return Err(e),
+    };
+    let second_num = match second_num_str.parse::<i32>() {
+        Ok(num) => num,
+        Err(e) => return Err(e),
+    };
+
+    Ok(first_num * second_num)
+}
+
+fn print(result: Result<i32, ParseIntError>) {
+    match result {
+        Ok(n) => println!("n is {}", n),
+        Err(e) => println!("Error: {}", e),
+    }
+}
+
+fn main() {
+    let twenty = multiply("10", "2");
+    print(twenty);
+
+    let tt = multiply("t", "2");
+    print(tt);
+}
+*/
+
+// --------------------------------------------------------------------
+// section 11 - introducing `?`, `try!` macro
+/*
+// Sometimes we just want the simplicity of `unwrap` without the possibility of a `panic`.
+// Until now, `unwrap` has forced us to nest deeper and deeper when what we really wanted
+// was to get the variable out. This is exactly the purpose of `?`.
+//
+// Upon finding an `Err`, there are two valid actions to take:
+// - `panic!` which we already decided to try to avoid if possible
+// - `return` because an `Err` means it cannot be handled
+// `?` is almost1 exactly equivalent to an `unwrap` which returns instead of panicking on `Errs`.
+// Let's see how we can simplify the earlier example that used combinators:
+
+use std::num::ParseIntError;
+
+fn multiply(first_num_str: &str, second_num_str: &str) -> Result<i32, ParseIntError> {
+    let first_num = first_num_str.parse::<i32>()?;
+    let second_num = second_num_str.parse::<i32>()?;
+
+    Ok(first_num * second_num)
+}
+
+// Before there was `?`, the same functionality was achieved with the `try!` macro.
+// The `?` operator is now recommended, but you may still find `try!` when looking at older code.
+// The same multiply function from the previous example would look like this using `try!`:
+
+// fn multiply(first_num_str: &str, second_num_str: &str) -> Result<i32, ParseIntError> {
+//     let first_num = try!(first_num_str.parse::<i32>());
+//     let second_num = try!(second_num_str.parse::<i32>());
+
+//     Ok(first_num * second_num)
+// }
+
+fn print(result: Result<i32, ParseIntError>) {
+    match result {
+        Ok(n) => println!("n is {}", n),
+        Err(e) => println!("Error: {}", e),
+    }
+}
+
+fn main() {
+    let twenty = multiply("10", "2");
+    print(twenty);
+
+    let tt = multiply("t", "2");
+    print(tt);
+}
+*/
+
+// --------------------------------------------------------------------
+// section 12 - Multiple error types: overview
+
+/*
+// The previous examples have always been very convenient; `Result`s interact with other `Result`s and `Option`s
+// interact with other `Option`s. Sometimes an `Option` needs to interact with a `Result`, or a `Result<T, Error1>`
+// needs to interact with a `Result<T, Error2>`. In those cases, we want to manage our different error types
+// in a way that makes them composable and easy to interact with.
+//
+// In the following code, two instances of unwrap generate different error types.
+// `Vec::first` returns an `Option`, while `parse::<i32>` returns a `Result<i32, ParseIntError>`:
+
+fn double_first(vec: Vec<&str>) -> i32 {
+    let first = vec.first().unwrap(); // generate error 1
+    2 * first.parse::<i32>().unwrap() // generate error 2
+}
+
+fn main() {
+    let numbers = vec!["42", "93", "18"];
+    let empty = vec![];
+    let strings = vec!["tofu", "93", "18"];
+
+    println!("first doubleis {}", double_first(numbers));
+    println!("first doubleis {}", double_first(empty));
+    println!("first doubleis {}", double_first(strings));
+}
+*/
+
+// --------------------------------------------------------------------
+// section 13 - Multiple error types: pulling results out of options
+
+use std::num::ParseIntError;
+
+// fn double_first(vec: Vec<&str>) -> Option<Result<i32, ParseIntError>> {
+//     vec.first().map(|first| first.parse::<i32>().map(|n| 2 * n))
+// }
+
+fn double_first(vec: Vec<&str>) -> Result<Option<i32>, ParseIntError> {
+    let opt = vec.first().map(|first| first.parse::<i32>().map(|n| 2 * n));
+    opt.map_or(Ok(None), |r| r.map(Some))
+}
+fn main() {
+    let numbers = vec!["42", "93", "18"];
+    let empty = vec![];
+    let strings = vec!["tofu", "93", "18"];
+
+    println!("first doubleis {:?}", double_first(numbers));
+    println!("first doubleis {:?}", double_first(empty));
+    println!("first doubleis {:?}", double_first(strings));
+}
+
+// --------------------------------------------------------------------
+// section 13 - Multiple error types: defining an error type
+
+// --------------------------------------------------------------------
+// section 13 - Multiple error types: boxing errors
+
+// --------------------------------------------------------------------
+// section 13 - Multiple error types: other uses of `?`
+
+// --------------------------------------------------------------------
+// section 13 - Multiple error types: wrapping errors
 
 // --------------------------------------------------------------------
 // section 10 - Iterating over Results
