@@ -17,6 +17,7 @@ members = [
     "scoping-rules",
     "traits",
     "macro-rules",
+    "error-handling",
 ]
 default-members = [
     "helloworld",
@@ -36,5 +37,6 @@ default-members = [
     "scoping-rules",
     "traits",
     "macro-rules",
+    "error-handling",
 ]
 resolver = "2"
