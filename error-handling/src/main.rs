@@ -651,7 +651,7 @@ fn main() {
 
 // --------------------------------------------------------------------
 // section 13 - Multiple error types: pulling results out of options
-
+/*
 use std::num::ParseIntError;
 
 // fn double_first(vec: Vec<&str>) -> Option<Result<i32, ParseIntError>> {
@@ -662,6 +662,7 @@ fn double_first(vec: Vec<&str>) -> Result<Option<i32>, ParseIntError> {
     let opt = vec.first().map(|first| first.parse::<i32>().map(|n| 2 * n));
     opt.map_or(Ok(None), |r| r.map(Some))
 }
+
 fn main() {
     let numbers = vec!["42", "93", "18"];
     let empty = vec![];
@@ -671,18 +672,315 @@ fn main() {
     println!("first doubleis {:?}", double_first(empty));
     println!("first doubleis {:?}", double_first(strings));
 }
+*/
 
 // --------------------------------------------------------------------
-// section 13 - Multiple error types: defining an error type
+// section 14 - Multiple error types: defining an error type
+/*
+// Sometimes it simplifies the code to mask all of the different errors with a single type of error.
+// We'll show this with a custom error.
+//
+// Rust allows us to define our own error types. In general, a "good" error type:
+//
+//   - Represents different errors with the same type
+//   - Presents nice error messages to the user
+//   - Is easy to compare with other types
+//       - Good: `Err(EmptyVec)`
+//       - Bad: `Err("Please use a vector with at least one element".to_owned())`
+//   - Can hold information about the error
+//       - Good: Err(BadChar(c, position))
+//       - Bad: Err("+ cannot be used here".to_owned())
+//   - Composes well with other errors
+
+use std::fmt;
+
+type Result<T> = std::result::Result<T, DoubleError>;
+
+// Define our error types. These may be customized for our error handling cases.
+// Now we will be able to write our own errors, defer to an underlying error
+// implementation, or do something in between.
+#[derive(Debug, Clone)]
+struct DoubleError;
+
+// Generation of an error is completely separate from how it is displayed.
+// There's no need to be concerned about cluttering complex logic with the display style.
+//
+// Note that we don't store any extra info about the errors. This means we can't state
+// which string failed to parse without modifying our types to carry that information.
+impl fmt::Display for DoubleError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid first item to double")
+    }
+}
+
+fn double_first(vec: Vec<&str>) -> Result<i32> {
+    vec.first()
+        // change the error to our new type.
+        .ok_or(DoubleError)
+        .and_then(|s| {
+            s.parse::<i32>()
+                // update to the new error type here also.
+                .map_err(|_| DoubleError)
+                .map(|i| i * 2)
+        })
+}
+
+fn print(result: Result<i32>) {
+    match result {
+        Ok(n) => println!("the first doubled is {}", n),
+        Err(e) => println!("Error: {}", e),
+    }
+}
+
+fn main() {
+    let numbers = vec!["42", "93", "18"];
+    let empty = vec![];
+    let strings = vec!["tofu", "93", "18"];
+
+    print(double_first(numbers));
+    print(double_first(empty));
+    print(double_first(strings));
+}
+*/
 
 // --------------------------------------------------------------------
-// section 13 - Multiple error types: boxing errors
+// section 15 - Multiple error types: boxing errors
+/*
+// A way to write simple code while preserving the original errors is to `Box` them.
+// The drawback is that the underlying error type is only known at runtime and not statically determined.
+// { ref: https://doc.rust-lang.org/book/ch17-02-trait-objects.html#trait-objects-perform-dynamic-dispatch }
+//
+// The stdlib helps in boxing our errors by having `Box` implement conversion from any type that
+// implements the `Error` trait into the trait object `Box<Error>`, via From.
+
+use std::error;
+use std::fmt;
+
+// change the alias to `Box<error::Error>`
+type Result<T> = std::result::Result<T, Box<dyn error::Error>>;
+
+#[derive(Debug, Clone)]
+struct EmptyVec;
+
+impl fmt::Display for EmptyVec {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid first item to double")
+    }
+}
+
+impl error::Error for EmptyVec {}
+
+fn double_first(vec: Vec<&str>) -> Result<i32> {
+    vec.first()
+        .ok_or_else(|| EmptyVec.into()) // converts to Box
+        .and_then(|s| {
+            s.parse::<i32>()
+                .map_err(|e| e.into()) // converts to Box
+                .map(|n| n * 2)
+        })
+}
+
+fn print(result: Result<i32>) {
+    match result {
+        Ok(n) => println!("the first doubled is {}", n),
+        Err(e) => println!("Error: {}", e),
+    }
+}
+
+fn main() {
+    let numbers = vec!["42", "93", "18"];
+    let empty = vec![];
+    let strings = vec!["tofu", "93", "18"];
+
+    print(double_first(numbers));
+    print(double_first(empty));
+    print(double_first(strings));
+}
+*/
 
 // --------------------------------------------------------------------
-// section 13 - Multiple error types: other uses of `?`
+// section 16 - Multiple error types: other uses of `?`
+/*
+// Notice in the previous example that our immediate reaction to calling `parse` is to `map`
+// the error from a library error into a boxed error:
+// ```
+// .and_then(|s| s.parse::<i32>())
+//     .map_err(|e| e.into())
+// ````
+// Since this is a simple and common operation, it would be convenient if it could be elided.
+// Alas, because `and_then` is not sufficiently flexible, it cannot. However, we can instead use `?`.
+//
+// `?` was previously explained as either `unwrap` or r`eturn Err(err)``. This is only mostly true.
+// It actually means `unwrap` or `return Err(From::from(err))`. Since `From::from` is a conversion
+// utility between different types, this means that if you `?` where the error is convertible to
+// the return type, it will convert automatically.
+//
+// Here, we rewrite the previous example using `?`. As a result, the `map_err` will go away
+// when `From::from` is implemented for our error type:
+
+use std::error;
+use std::fmt;
+
+// change the alias to `Box<error::Error>`
+type Result<T> = std::result::Result<T, Box<dyn error::Error>>;
+
+#[derive(Debug, Clone)]
+struct EmptyVec;
+
+impl fmt::Display for EmptyVec {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "invalid first item to double")
+    }
+}
+
+impl error::Error for EmptyVec {}
+
+fn double_first(vec: Vec<&str>) -> Result<i32> {
+    let first = vec.first().ok_or(EmptyVec)?;
+    let parsed = first.parse::<i32>()?;
+    Ok(parsed * 2)
+}
+
+fn print(result: Result<i32>) {
+    match result {
+        Ok(n) => println!("the first doubled is {}", n),
+        Err(e) => println!("Error: {}", e),
+    }
+}
+
+fn main() {
+    let numbers = vec!["42", "93", "18"];
+    let empty = vec![];
+    let strings = vec!["tofu", "93", "18"];
+
+    print(double_first(numbers));
+    print(double_first(empty));
+    print(double_first(strings));
+}
+*/
 
 // --------------------------------------------------------------------
-// section 13 - Multiple error types: wrapping errors
+// section 17 - Multiple error types: wrapping errors
+/*
+// an alternative to boxing errors is to wrpa them in your own error type.
+use std::error;
+use std::error::Error;
+use std::fmt;
+use std::num::ParseIntError;
+
+type Result<T> = std::result::Result<T, DoubleError>;
+
+#[derive(Debug)]
+enum DoubleError {
+    EmptyVec,
+    // we will defer to the pase error implementation for their error.
+    // supplying extra into requires adding more data to the type.
+    Parse(ParseIntError),
+}
+
+impl fmt::Display for DoubleError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            DoubleError::EmptyVec => write!(f, "please use a vector with at least one element"),
+            // the wrapped error contains additional information and is available via the source() method
+            DoubleError::Parse(..) => write!(f, "the provided string could not be parsed as int"),
+        }
+    }
+}
+
+impl error::Error for DoubleError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        match *self {
+            DoubleError::EmptyVec => None,
+            // the cause is the underlying implementation error type. is implicitly cast to the
+            // trait object `&error::Error`. this works because the underlying type already
+            // implements the `Error` trait.
+            DoubleError::Parse(ref e) => Some(e),
+        }
+    }
+}
+
+impl From<ParseIntError> for DoubleError {
+    fn from(err: ParseIntError) -> DoubleError {
+        DoubleError::Parse(err)
+    }
+}
+
+fn double_first(vec: Vec<&str>) -> Result<i32> {
+    let first = vec.first().ok_or(DoubleError::EmptyVec)?;
+    let parsed = first.parse::<i32>()?;
+
+    Ok(parsed * 2)
+}
+
+fn print(result: Result<i32>) {
+    match result {
+        Ok(n) => println!("the first doubled is {}", n),
+        Err(e) => {
+            println!("Error: {}", e);
+            if let Some(source) = e.source() {
+                println!(" -> caused by: {}", source);
+            }
+        }
+    }
+}
+
+fn main() {
+    let numbers = vec!["42", "93", "18"];
+    let empty = vec![];
+    let strings = vec!["tofu", "93", "18"];
+
+    print(double_first(numbers));
+    print(double_first(empty));
+    print(double_first(strings));
+}
+*/
 
 // --------------------------------------------------------------------
-// section 10 - Iterating over Results
+// section 18 - Iterating over Results
+
+fn main() {
+    // `Iter::map`,
+    // let strings = vec!["tofu", "93", "18"];
+    // let numbers: Vec<_> = strings.into_iter().map(|s| s.parse::<i32>()).collect();
+    // println!("result: {:?}", numbers);
+
+    // `filter_map`, ignore the failed items
+    // let strings = vec!["tofu", "93", "18"];
+    // let numbers: Vec<_> = strings
+    //     .into_iter()
+    //     .filter_map(|s| s.parse::<i32>().ok())
+    //     .collect();
+    // println!("result: {:?}", numbers);
+
+    // `filter_map` & `map_err`, collect the failed items
+    // let strings = vec!["tofu", "93", "18"];
+    // let mut errors = vec![];
+    // let numbers: Vec<_> = strings
+    //     .into_iter()
+    //     .map(|s| s.parse::<u8>())
+    //     .filter_map(|r| r.map_err(|e| errors.push(e)).ok()).collect();
+    // println!("numbers: {:?}", numbers);
+    // println!("errors: {:?}", errors);
+
+    // fail the entire operation with `collect`
+    // `Result` implements `FromIterator` so that a vector of results (`Vec<Result<T, E>>`) can be turned into
+    // a result with a vector (`Result<Vec<T>, E>`). Once an `Result::Err` is found, the iteration will terminate.
+    // let strings = vec!["tofu", "29", "93", "18"];
+    // let numbers: Result<Vec<_>, _> = strings.into_iter().map(|s| s.parse::<i32>()).collect();
+    // println!("result: {:?}", numbers);
+
+    // collect all valid values and failures with `partition()`
+    let strings = vec!["tofu", "93", "18"];
+    let (numbers, errors): (Vec<_>, Vec<_>) = strings
+        .into_iter()
+        .map(|s| s.parse::<i32>())
+        .partition(Result::is_ok);
+    println!("numbers: {:?}", numbers);
+    println!("errors: {:?}", errors);
+
+    let numbers: Vec<_> = numbers.into_iter().map(Result::unwrap).collect();
+    let errors: Vec<_> = errors.into_iter().map(Result::unwrap_err).collect();
+    println!("numbers: {:?}", numbers);
+    println!("errors: {:?}", errors);
+}
