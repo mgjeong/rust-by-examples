@@ -318,7 +318,6 @@ fn main() {
 // ----------------------------------------------------------------------
 // section 05 - result
 /*
- */
 
 mod checked {
     #[derive(Debug)]
@@ -372,26 +371,246 @@ fn op(x: f64, y: f64) -> f64 {
 fn main() {
     println!("{}", op(1.0, 10.0));
 }
+*/
 
 // ----------------------------------------------------------------------
 // section 06 - result: ?
 /*
- */
+mod checked {
+    #[derive(Debug)]
+    enum MathError {
+        DivisionByZero,
+        NonPositiveLogarithm,
+        NegativeSquareRoot,
+    }
+
+    type MathResult = Result<f64, MathError>;
+
+    fn div(x: f64, y: f64) -> MathResult {
+        if y == 0.0 {
+            Err(MathError::DivisionByZero)
+        } else {
+            Ok(x / y)
+        }
+    }
+
+    fn sqrt(x: f64) -> MathResult {
+        if x < 0.0 {
+            Err(MathError::NegativeSquareRoot)
+        } else {
+            Ok(x.sqrt())
+        }
+    }
+
+    fn ln(x: f64) -> MathResult {
+        if x <= 0.0 {
+            Err(MathError::NonPositiveLogarithm)
+        } else {
+            Ok(x.ln())
+        }
+    }
+
+    fn op_(x: f64, y: f64) -> MathResult {
+        let ratio = div(x, y)?;
+        let log = ln(ratio)?;
+        sqrt(log)
+    }
+
+    pub fn op(x: f64, y: f64) {
+        match op_(x, y) {
+            Ok(value) => println!("{}", value),
+            Err(why) => panic!(
+                "{}",
+                match why {
+                    MathError::DivisionByZero => "divide by zero",
+                    MathError::NegativeSquareRoot => "square of negative",
+                    MathError::NonPositiveLogarithm => "logarithm of non-positive",
+                }
+            ),
+        }
+    }
+}
+
+fn main() {
+    checked::op(1.0, 10.0);
+}
+*/
 
 // ----------------------------------------------------------------------
 // section 07 - panic!
 /*
- */
+
+// The `panic!` macro can be used to generate a panic and start unwinding its stack.
+// While unwinding, the runtime will take care of freeing all the resources owned by the thread
+// by calling the destructor of all its objects.
+//
+// Since we are dealing with programs with only one thread, `panic!` will cause the program
+// to report the panic message and exit.
+
+// Re-implementation of integer division (/)
+fn division(dividend: i32, divisor: i32) -> i32 {
+    if divisor == 0 {
+        // Division by zero triggers a panic
+        panic!("division by zero");
+    } else {
+        dividend / divisor
+    }
+}
+
+// The `main` task
+fn main() {
+    // Heap allocated integer
+    let _x = Box::new(0i32);
+
+    // This operation will trigger a task failure
+    division(3, 0);
+
+    println!("This point won't be reached!");
+
+    // `_x` should get destroyed at this point
+}
+
+// ```
+// $ rustc panic.rs && valgrind ./panic
+// ==4401== Memcheck, a memory error detector
+// ==4401== Copyright (C) 2002-2013, and GNU GPL'd, by Julian Seward et al.
+// ==4401== Using Valgrind-3.10.0.SVN and LibVEX; rerun with -h for copyright info
+// ==4401== Command: ./panic
+// ==4401==
+// thread '<main>' panicked at 'division by zero', panic.rs:5
+// ==4401==
+// ==4401== HEAP SUMMARY:
+// ==4401==     in use at exit: 0 bytes in 0 blocks
+// ==4401==   total heap usage: 18 allocs, 18 frees, 1,648 bytes allocated
+// ==4401==
+// ==4401== All heap blocks were freed -- no leaks are possible
+// ==4401==
+// ==4401== For counts of detected and suppressed errors, rerun with: -v
+// ==4401== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+// ```
+*/
 
 // ----------------------------------------------------------------------
 // section 08 - hashmap
 /*
- */
+// Where vectors store values by an integer index, `HashMap`s store values by key.
+// `HashMap` keys can be booleans, integers, strings, or any other type that implements
+// the `Eq` and `Hash` traits. More on this in the next section.
+//
+// Like vectors, `HashMap`s are growable, but HashMaps can also shrink themselves
+// when they have excess space. You can create a HashMap with a certain starting capacity
+// using `HashMap::with_capacity(uint)`, or use `HashMap::new()` to get a HashMap with
+// a default initial capacity (recommended).
+
+use std::collections::HashMap;
+
+fn call(number: &str) -> &str {
+    match number {
+        "798-1364" => "We're sorry, the call cannot blar blar",
+        "645-7698" => "Hello, this is Mr. Awesomes's pizza. blar...",
+        _ => "Hi! who is this again?",
+    }
+}
+
+fn main() {
+    let mut contacts = HashMap::new();
+    contacts.insert("Daniel", "798-1364");
+    contacts.insert("Ashley", "645-7698");
+    contacts.insert("Katie", "234-1451");
+    contacts.insert("Robert", "123-5325");
+
+    match contacts.get(&"Daniel") {
+        Some(&number) => println!("calling Daniel: {}", call(number)),
+        _ => println!("don't have daniel's number"),
+    }
+
+    contacts.insert("Daniel", "932-2345");
+
+    match contacts.get(&"Ashley") {
+        Some(&number) => println!("calling Ashley: {}", call(number)),
+        _ => println!("don't have ashley's number"),
+    }
+
+    contacts.remove(&"Ashley");
+
+    for (contact, &number) in contacts.iter() {
+        println!("calling {}: {}", contact, call(number));
+    }
+}
+*/
 
 // ----------------------------------------------------------------------
 // section 09 - hashmap: alternative/custom key types
 /*
  */
+// Any type that implements the `Eq` and `Hash` traits can be a key in `HashMap`. This includes:
+// - `bool` (though not very useful since there is only two possible keys)
+// - `int`, `uint`, and all variations thereof
+// - `String` and `&str` (protip: you can have a `HashMap` keyed by `String` and call `.get()` with an `&str`)
+// Note that `f32` and `f64` do not implement `Hash`, likely because floating-point precision errors
+// would make using them as hashmap keys horribly error-prone.
+//
+// All collection classes implement `Eq` and `Hash` if their contained type also respectively implements
+// `Eq` and `Hash`. For example, `Vec<T>` will implement `Hash` if `T` implements `Hash`.
+//
+// You can easily implement `Eq` and `Hash` for a custom type with just one line: `#[derive(PartialEq, Eq, Hash)]`
+//
+// The compiler will do the rest. If you want more control over the details,
+// you can implement `Eq` and/or `Hash` yourself. This guide will not cover the specifics of implementing `Hash`.
+//
+// To play around with using a `struct` in `HashMap`, let's try making a very simple user logon system:
+
+use std::collections::HashMap;
+
+#[derive(PartialEq, Eq, Hash)]
+struct Account<'a> {
+    username: &'a str,
+    password: &'a str,
+}
+
+struct AccountInfo<'a> {
+    name: &'a str,
+    email: &'a str,
+}
+
+type Accounts<'a> = HashMap<Account<'a>, AccountInfo<'a>>;
+
+fn try_login<'a>(accounts: &Accounts<'a>, username: &'a str, password: &'a str) {
+    println!("username: {}", username);
+    println!("passowrd: {}", password);
+    println!("Atempting login...");
+
+    let logon = Account { username, password };
+
+    match accounts.get(&logon) {
+        Some(account_info) => {
+            println!("login success");
+            println!("name: {}", account_info.name);
+            println!("email: {}", account_info.email);
+        }
+        _ => println!("login failed..."),
+    }
+}
+
+fn main() {
+    let mut accounts: Accounts = Accounts::new();
+
+    let account = Account {
+        username: "asdf",
+        password: "qwer",
+    };
+
+    let account_info = AccountInfo {
+        name: "ASDF",
+        email: "asdf@email.com",
+    };
+
+    accounts.insert(account, account_info);
+
+    try_login(&accounts, "asdf", "qewr");
+
+    try_login(&accounts, "asdf", "qwer");
+}
 
 // ----------------------------------------------------------------------
 // section 10 - hashmap: hashset
