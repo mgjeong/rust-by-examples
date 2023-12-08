@@ -542,7 +542,6 @@ fn main() {
 // ----------------------------------------------------------------------
 // section 09 - hashmap: alternative/custom key types
 /*
- */
 // Any type that implements the `Eq` and `Hash` traits can be a key in `HashMap`. This includes:
 // - `bool` (though not very useful since there is only two possible keys)
 // - `int`, `uint`, and all variations thereof
@@ -611,18 +610,141 @@ fn main() {
 
     try_login(&accounts, "asdf", "qwer");
 }
+*/
 
 // ----------------------------------------------------------------------
 // section 10 - hashmap: hashset
 /*
- */
+
+// Consider a `HashSet` as a `HashMap` where we just care about the keys
+// ( `HashSet<T>` is, in actuality, just a wrapper around `HashMap<T, ()>`).
+//
+// "What's the point of that?" you ask. "I could just store the keys in a `Vec`."
+//
+// A `HashSet`'s unique feature is that it is guaranteed to not have duplicate elements.
+// That's the contract that any set collection fulfills. `HashSet` is just one implementation.
+// (see also: `BTreeSet`)
+//
+// If you insert a value that is already present in the `HashSet`, (i.e. the new value is equal
+// to the existing and they both have the same hash), then the new value will replace the old.
+//
+// This is great for when you never want more than one of something, or when you want to know
+// if you've already got something.
+//
+// But sets can do more than that.
+//
+// Sets have 4 primary operations (all of the following calls return an iterator):
+//   - `union`: get all the unique elements in both sets.
+//   - `difference`: get all the elements that are in the first set but not the second.
+//   - `intersection`: get all the elements that are only in both sets.
+//   - `symmetric_difference`: get all the elements that are in one set or the other, but not both.
+
+use std::collections::HashSet;
+
+fn main() {
+    let mut a: HashSet<i32> = vec![1i32, 2, 3].into_iter().collect();
+    let mut b: HashSet<i32> = vec![2i32, 3, 4].into_iter().collect();
+
+    assert!(a.insert(4));
+    assert!(a.contains(&4));
+
+    // assert!(b.insert(4), "Value 4 is already in set B");
+
+    b.insert(5);
+
+    println!("A: {:?}", a);
+    println!("B: {:?}", b);
+
+    println!("union: {:?}", a.union(&b).collect::<Vec<&i32>>());
+    println!("difference: {:>?}", a.difference(&b).collect::<Vec<&i32>>());
+    println!("difference: {:>?}", b.difference(&a).collect::<Vec<&i32>>());
+    println!(
+        "intersection: {:>?}",
+        a.intersection(&b).collect::<Vec<&i32>>()
+    );
+    println!(
+        "sysmetic diff: {:>?}",
+        a.symmetric_difference(&b).collect::<Vec<&i32>>()
+    );
+}
+*/
 
 // ----------------------------------------------------------------------
 // section 11 - rc
 /*
- */
+// When multiple ownership is needed, `Rc`(Reference Counting) can be used.
+// `Rc` keeps track of the number of the references which means the number of owners of the value wrapped inside an `Rc`.
+//
+// Reference count of an `Rc` increases by 1 whenever an `Rc` is cloned, and decreases by 1
+// whenever one cloned `Rc` is dropped out of the scope. When an `Rc`'s reference count becomes zero
+// (which means there are no remaining owners), both the `Rc` and the value are all dropped.
+//
+// Cloning an `Rc` never performs a deep copy. Cloning creates just another pointer to the wrapped value,
+// and increments the count.
+
+use std::rc::Rc;
+
+fn main() {
+    let rc_examples = "Rc examples".to_string();
+    {
+        println!("--- rc_a is created");
+        let rc_a: Rc<String> = Rc::new(rc_examples);
+        println!("the reference count of rc_a: {}", Rc::strong_count(&rc_a));
+
+        {
+            println!("--- rc_a is cloned to rc_b");
+            let rc_b: Rc<String> = Rc::clone(&rc_a);
+            println!("the reference count of rc_b: {}", Rc::strong_count(&rc_b));
+            println!("the reference count of rc_a: {}", Rc::strong_count(&rc_a));
+
+            println!("rc_a and rc_b are equal: {}", rc_a.eq(&rc_b));
+
+            println!("lenght of the value inside rc_a: {}", rc_a.len());
+            println!("value of rc_b: {}", rc_b);
+
+            println!("--- rc_b is dropped out of scope ---");
+        }
+
+        println!("reference count of rc_a: {}", Rc::strong_count(&rc_a));
+        println!("--- rc_a is dropped out of scope ---");
+    }
+
+    // println!("fc_examples: {}", rc_examples);
+}
+*/
 
 // ----------------------------------------------------------------------
 // section 12 - arc
 /*
  */
+// When shared ownership between threads is needed, `Arc`(Atomically Reference Counted) can be used.
+// This struct, via the `Clone` implementation can create a reference pointer for the location of a value
+// in the memory heap while increasing the reference counter. As it shares ownership between threads,
+// when the last reference pointer to a value is out of scope, the variable is dropped.
+
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
+
+fn main() {
+    let apple = Arc::new(Mutex::new("the same apple"));
+
+    for i in 0..10 {
+        let apple = Arc::clone(&apple);
+
+        if i == 5 {
+            let mut apple_lock = apple.lock().unwrap();
+            *apple_lock = &"changed apple";
+        }
+
+        thread::spawn(move || {
+            println!("{:?}", apple);
+        });
+
+        thread::sleep(Duration::from_millis(100));
+    }
+
+    thread::sleep(Duration::from_secs(1));
+
+    println!("{:?}", apple);
+}
