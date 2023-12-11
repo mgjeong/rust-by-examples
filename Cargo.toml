@@ -19,6 +19,7 @@ members = [
     "macro-rules",
     "error-handling",
     "std-library-types",
+    "std-misc",
 ]
 default-members = [
     "helloworld",
@@ -40,5 +41,6 @@ default-members = [
     "macro-rules",
     "error-handling",
     "std-library-types",
+    "std-misc",
 ]
 resolver = "2"
