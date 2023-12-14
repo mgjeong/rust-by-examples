@@ -20,6 +20,7 @@ members = [
     "error-handling",
     "std-library-types",
     "std-misc",
+    "testing",
 ]
 default-members = [
     "helloworld",
@@ -42,5 +43,6 @@ default-members = [
     "error-handling",
     "std-library-types",
     "std-misc",
+    "testing",
 ]
 resolver = "2"
