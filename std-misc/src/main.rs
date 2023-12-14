@@ -371,8 +371,6 @@ fn main() {
 // ---------------------------------------------------------------------
 // section 10 - child processes: wait
 /*
- */
-
 use std::process::Command;
 
 fn main() {
@@ -381,23 +379,222 @@ fn main() {
 
     println!("reached end of main");
 }
+*/
 
 // ---------------------------------------------------------------------
 // section 11 - file operations
 /*
- */
+use std::fs;
+use std::fs::{File, OpenOptions};
+use std::io;
+use std::io::prelude::*;
+use std::os::unix;
+use std::path::Path;
+
+fn cat(path: &Path) -> io::Result<String> {
+    let mut f = File::open(path)?;
+    let mut s = String::new();
+    // match f.read_to_string(&mut s) {
+    //     Ok(_) => Ok(s),
+    //     Err(e) => Err(e),
+    // }
+    f.read_to_string(&mut s)?;
+    Ok(s)
+}
+
+fn echo(s: &str, path: &Path) -> io::Result<()> {
+    let mut f = File::create(path)?;
+    f.write_all(s.as_bytes())
+}
+
+fn touch(path: &Path) -> io::Result<()> {
+    // match OpenOptions::new().create(true).write(true).open(path) {
+    //     Ok(_) => Ok(()),
+    //     Err(e) => Err(e),
+    // }
+    OpenOptions::new().create(true).write(true).open(path)?;
+    Ok(())
+}
+
+fn main() {
+    println!("`mkdir a`");
+    match fs::create_dir("a") {
+        Ok(_) => {}
+        Err(e) => println!("! {:?}", e.kind()),
+    }
+
+    println!("`echo hello > a/b.txt`");
+    echo("hello", &Path::new("a/b.txt")).unwrap_or_else(|e| {
+        println!("! {:?}", e.kind());
+    });
+
+    println!("`mkdir -p a/c/d`");
+    fs::create_dir_all("a/c/d").unwrap_or_else(|e| {
+        println!("! {:?}", e.kind());
+    });
+
+    println!("`touch a/c/e.txt`");
+    touch(&Path::new("a/c/e.txt")).unwrap_or_else(|e| {
+        println!("! {:?}", e.kind());
+    });
+
+    println!("`ln -s ../b.txt a/c/b.txt`");
+    if cfg!(target_family = "unix") {
+        unix::fs::symlink("../b.txt", "a/c/b.txt").unwrap_or_else(|e| {
+            println!("! {:?}", e.kind());
+        })
+    }
+
+    println!("`cat a/c/b.txt`");
+    match cat(&Path::new("a/c/b.txt")) {
+        Ok(s) => println!("> {}", s),
+        Err(e) => println!("! {:?}", e.kind()),
+    }
+
+    println!("`ls a`");
+    match fs::read_dir("a") {
+        Ok(paths) => {
+            for path in paths {
+                println!("> {:?}", path.unwrap().path());
+            }
+        }
+        Err(e) => println!("! {:?}", e.kind()),
+    }
+
+    println!("`rm a/c/e.txt`");
+    fs::remove_file("a/c/e.txt").unwrap_or_else(|e| {
+        println!("! {:?}", e.kind());
+    });
+
+    println!("`rmdir a/c/d`");
+    fs::remove_dir("a/c/d").unwrap_or_else(|e| {
+        println!("! {:?}", e.kind());
+    });
+}
+*/
 
 // ---------------------------------------------------------------------
 // section 12 - program arguments
 /*
- */
+use std::env;
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    println!("My path is {}.", args[0]);
+
+    println!("I got {:?} arguments: {:?}", args.len() - 1, &args[1..]);
+}
+*/
 
 // ---------------------------------------------------------------------
 // section 13 - program arguments: argument parsing
 /*
- */
+use std::env;
+
+fn increase(number: i32) {
+    println!("{}", number + 1);
+}
+
+fn decrease(number: i32) {
+    println!("{}", number - 1);
+}
+
+fn help() {
+    println!(
+        "usage:
+match_args <string>
+    Check whether given string is the answer.
+match_args {{increase|decrease}} <integer>
+    Increase or decrease given integer by one."
+    );
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+
+    match args.len() {
+        // no argument
+        1 => {
+            println!("my name is `match_args`. try passing some arguments");
+        }
+        // one
+        2 => match args[1].parse() {
+            Ok(42) => println!("this is the answer"),
+            _ => println!("this is not the answer"),
+        },
+        // two
+        3 => {
+            let cmd = &args[1];
+            let num = &args[2];
+            let number: i32 = match num.parse() {
+                Ok(n) => n,
+                Err(_) => {
+                    eprintln!("error: second argument is not an integer");
+                    help();
+                    return;
+                }
+            };
+            match &cmd[..] {
+                "increase" => increase(number),
+                "decrease" => decrease(number),
+                _ => {
+                    eprintln!("error: invalid command");
+                    help();
+                    return;
+                }
+            };
+        }
+        // others
+        _ => {
+            help();
+        }
+    }
+}
+*/
 
 // ---------------------------------------------------------------------
 // section 14 - foreign function interface
 /*
  */
+use std::fmt;
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct Complex {
+    re: f32,
+    im: f32,
+}
+
+impl fmt::Debug for Complex {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.im < 0. {
+            write!(f, "{}-j{}", self.re, self.im)
+        } else {
+            write!(f, "{}+j{}", self.re, self.im)
+        }
+    }
+}
+
+// this extern bleck links to the libm library
+#[link(name = "m")]
+extern "C" {
+    fn csqrtf(z: Complex) -> Complex;
+    fn ccosf(z: Complex) -> Complex;
+}
+
+// since calling foreign functions is considered unsafe,
+// it's common to write safe wrappers around them.
+fn cos(z: Complex) -> Complex {
+    unsafe { ccosf(z) }
+}
+
+fn main() {
+    // z = -1 + j0
+    let z = Complex { re: -1., im: 0. };
+
+    let z_sqrt = unsafe { csqrtf(z) };
+
+    println!("the square root of {:?} is {:?}", z, z_sqrt);
+    println!("cos ({:?}) = {:?}", z, cos(z));
+}
