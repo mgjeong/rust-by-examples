@@ -78,7 +78,6 @@ mod tests {
 // -------------------------------------------------------------
 // section 02. documentation testing
 /*
- */
 /// First line is a short summary describing function.
 ///
 /// The next lines present detailed documentation. Code blocks start with
@@ -140,13 +139,36 @@ pub fn try_div(a: i32, b: i32) -> Result<i32, String> {
         Ok(a / b)
     }
 }
+*/
 
 // -------------------------------------------------------------
 // section 03. integration testing
 /*
- */
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+*/
 
 // -------------------------------------------------------------
 // section 04. dev-dependencies
 /*
  */
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn test_add() {
+        assert_eq!(add(2, 3), 5);
+    }
+
+    #[test]
+    fn test_bad_add() {
+        assert_eq!(add(2, 4), 8);
+    }
+}
