@@ -35,6 +35,15 @@ impl Person {
     }
 }
 
+#[doc(inline)]
+pub use bar::Bar;
+
+/// bar docs
+mod bar {
+    /// the docs for Bar
+    pub struct Bar;
+}
+
 fn main() {
     let john = Person::new("John");
 
